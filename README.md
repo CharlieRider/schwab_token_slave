@@ -1,7 +1,7 @@
 # 🛡️ Schwab Token Server
 
 A headless Python server that manages OAuth2 authentication with the Charles Schwab API and securely serves access tokens to internal clients via HTTP.
-
+Goal is to have client scripts running seperately have an endpoint to build the authentication for API calls. Only have to authenticate once and don't have to have some super filetree, just start the slave in the morning, auth in, vibe out. 
 ---
 
 ## 📦 Features
