@@ -21,7 +21,7 @@ oauth_session = OAuth2Session(
 
 current_token = {}
 
-def save_token(token):
+def save_token(token, startup_run=False):
     """
     Save the token to disk and update the global `current_token`.
 
@@ -33,7 +33,8 @@ def save_token(token):
     current_token = token
     with open(TOKEN_FILE, 'w') as f:
         json.dump(token, f)
-    logging.info("Token saved to disk: {}".format(TOKEN_FILE))
+    if not startup_run:
+        logging.info("Token saved to disk: {}".format(TOKEN_FILE))
 
 def load_token():
     """
@@ -48,7 +49,6 @@ def load_token():
     if os.path.exists(TOKEN_FILE):
         with open(TOKEN_FILE, 'r') as f:
             current_token = json.load(f)
-            logging.info("Token loaded from disk.")
     return current_token
 
 def perform_initial_auth():
@@ -71,7 +71,7 @@ def perform_initial_auth():
         authorization_response=redirected_url,
         client_secret=SCHWAB_CLIENT_SECRET
     )
-    save_token(token)
+    save_token(token, startup_run=False)
     print("Authorization successful.")
 
 def refresh_token():
@@ -182,25 +182,26 @@ def handle_fatal_error(e):
     print("Fatal error occurred:")
     print(traceback.format_exc())
 
-if __name__ == '__main__':
-    try:
-        # Check if the token file exists and validate the token
-        if not os.path.exists(TOKEN_FILE):
-            print("Token file not found. Performing initial authentication.")
+def check_and_initialize_token_no_logging():
+    """
+    Check if the token exists and is valid. If not, perform initial authentication.
+    """
+    if not os.path.exists(TOKEN_FILE):
+        print("Token file not found. Performing initial authentication.")
+        perform_initial_auth()
+    else:
+        print("Token file found. Validating token...")
+        token = load_token()
+        if 'expires_at' not in token or time.time() >= token['expires_at']:
+            print("Token is expired or invalid. Performing initial authentication.")
             perform_initial_auth()
         else:
-            print("Token file found. Validating token...")
-            token = load_token()
-            if 'expires_at' not in token or time.time() >= token['expires_at']:
-                print("Token is expired or invalid. Attempting to refresh...")
-                try:
-                    refresh_token()
-                except Exception as e:
-                    print(f"Token refresh failed: {e}")
-                    print("Falling back to initial authentication.")
-                    perform_initial_auth()
-            else:
-                print("Token is valid. Proceeding with server startup.")
+            print("Token is valid.")
+
+if __name__ == '__main__':
+    try:
+        # Check and initialize the token without logging
+        check_and_initialize_token_no_logging()
 
         # Initialize logging after the workflow
         initialize_logging()
